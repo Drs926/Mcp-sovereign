@@ -36,21 +36,29 @@ export const FinalizationScreen: React.FC<Props> = ({ mission, etatInitial, onNe
   const [signature, setSignature] = useState<string>('')
   const [reopenCode, setReopenCode] = useState<string>('')
   const [error, setError] = useState<string>('')
+  const [missingFields, setMissingFields] = useState<string[]>([])
 
   const updateEtatPatient = (field: keyof EtatClinique, value: string | number | string[]): void => {
     setEtatPatient((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleSave = async (): Promise<void> => {
-    if (heureRemise.trim() === '' || signature.trim() === '') {
-      setError('Heure de remise et signature sont obligatoires avant validation.')
-      return
-    }
+    const missing: string[] = []
+    if (heureRemise.trim() === '') missing.push('Heure de remise')
+    if (signature.trim() === '') missing.push('Signature accompagnant')
+    if (reopenCode.trim().length < 4) missing.push('Code de réouverture (≥4 caractères)')
+    if (etatPatient.ta.trim() === '') missing.push('TA finale')
+    if (etatPatient.fc.trim() === '') missing.push('FC finale')
+    if (etatPatient.spo2.trim() === '') missing.push('SpO₂ finale')
+    if (etatPatient.fr.trim() === '') missing.push('FR finale')
+    if (etatPatient.temperature.trim() === '') missing.push('Température finale')
 
-    if (reopenCode.trim().length < 4) {
-      setError('Définissez un code de réouverture (4 caractères minimum).')
+    if (missing.length > 0) {
+      setMissingFields(missing)
+      setError('Champs obligatoires manquants avant finalisation.')
       return
     }
+    setMissingFields([])
 
     const etatFinal: EtatFinal = {
       missionId: mission.id,
@@ -97,18 +105,18 @@ export const FinalizationScreen: React.FC<Props> = ({ mission, etatInitial, onNe
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Fin de mission</Text>
-      <TextInput placeholder="Heure de remise" value={heureRemise} onChangeText={setHeureRemise} style={styles.input} />
+      <TextInput placeholder="Heure de remise (obligatoire)" value={heureRemise} onChangeText={setHeureRemise} style={styles.input} />
       <Text style={styles.label}>Type de remise</Text>
       {renderOptions<TypeRemise>(TYPE_REMISE_OPTIONS, typeRemise, (value) => setTypeRemise(value))}
-      <TextInput placeholder="Signature numérique" value={signature} onChangeText={setSignature} style={styles.input} />
-      <TextInput placeholder="Code de réouverture" secureTextEntry value={reopenCode} onChangeText={setReopenCode} style={styles.input} />
+      <TextInput placeholder="Signature numérique (obligatoire)" value={signature} onChangeText={setSignature} style={styles.input} />
+      <TextInput placeholder="Code de réouverture (4 caractères minimum)" secureTextEntry value={reopenCode} onChangeText={setReopenCode} style={styles.input} />
 
       <Text style={styles.title}>État final patient</Text>
-      <TextInput placeholder="TA" value={etatPatient.ta} onChangeText={(text) => updateEtatPatient('ta', text)} style={styles.input} />
-      <TextInput placeholder="FC" value={etatPatient.fc} onChangeText={(text) => updateEtatPatient('fc', text)} style={styles.input} />
-      <TextInput placeholder="SpO₂" value={etatPatient.spo2} onChangeText={(text) => updateEtatPatient('spo2', text)} style={styles.input} />
-      <TextInput placeholder="FR" value={etatPatient.fr} onChangeText={(text) => updateEtatPatient('fr', text)} style={styles.input} />
-      <TextInput placeholder="Température" value={etatPatient.temperature} onChangeText={(text) => updateEtatPatient('temperature', text)} style={styles.input} />
+      <TextInput placeholder="TA (mmHg)" value={etatPatient.ta} onChangeText={(text) => updateEtatPatient('ta', text)} style={styles.input} />
+      <TextInput placeholder="FC (bpm)" value={etatPatient.fc} onChangeText={(text) => updateEtatPatient('fc', text)} style={styles.input} />
+      <TextInput placeholder="SpO₂ (%)" value={etatPatient.spo2} onChangeText={(text) => updateEtatPatient('spo2', text)} style={styles.input} />
+      <TextInput placeholder="FR (c/min)" value={etatPatient.fr} onChangeText={(text) => updateEtatPatient('fr', text)} style={styles.input} />
+      <TextInput placeholder="Température (°C)" value={etatPatient.temperature} onChangeText={(text) => updateEtatPatient('temperature', text)} style={styles.input} />
       <Text style={styles.label}>Conscience</Text>
       {renderOptions<ConscienceLevel>(CONSCIENCE_OPTIONS, etatPatient.conscience, (value) => updateEtatPatient('conscience', value))}
       <TextInput placeholder="Douleur (EVA)" keyboardType="numeric" value={etatPatient.douleurEVA.toString()} onChangeText={(text) => updateEtatPatient('douleurEVA', Number(text))} style={styles.input} />
@@ -116,6 +124,14 @@ export const FinalizationScreen: React.FC<Props> = ({ mission, etatInitial, onNe
       <TextInput placeholder="Dispositifs" value={etatPatient.dispositifs.join(', ')} onChangeText={(text) => updateEtatPatient('dispositifs', text.split(',').map(s => s.trim()).filter(Boolean))} style={styles.input} />
 
       {renderComparatif()}
+      {missingFields.length > 0 && (
+        <View style={styles.validationBox}>
+          <Text style={styles.validationTitle}>À compléter avant validation :</Text>
+          {missingFields.map(item => (
+            <Text key={item} style={styles.validationItem}>• {item}</Text>
+          ))}
+        </View>
+      )}
       {error !== '' && <Text style={styles.error}>{error}</Text>}
       <Button title="Valider la mission" onPress={handleSave} />
     </View>
@@ -188,5 +204,21 @@ const styles = StyleSheet.create({
   error: {
     color: '#b91c1c',
     marginBottom: 10
+  },
+  validationBox: {
+    borderWidth: 1,
+    borderColor: '#f97316',
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#fff7ed',
+    marginBottom: 12
+  },
+  validationTitle: {
+    color: '#c2410c',
+    fontWeight: '700',
+    marginBottom: 4
+  },
+  validationItem: {
+    color: '#7c2d12'
   }
 })

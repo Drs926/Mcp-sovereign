@@ -14,7 +14,13 @@ export const TimelineScreen: React.FC<Props> = ({ mission, onNext, existingEvent
   const [evenements, setEvenements] = useState<EvenementTimeline[]>(existingEvents)
   const [type, setType] = useState<EvenementType>('surveillance')
   const [note, setNote] = useState('')
-  const [constantes, setConstantes] = useState({ ta: '', fc: '', spo2: '', fr: '', temperature: '' })
+  const [constantes, setConstantes] = useState({
+    ta: '120/70 mmHg',
+    fc: '80 bpm',
+    spo2: '98 %SpO₂',
+    fr: '16 c/min',
+    temperature: '37.0 °C'
+  })
 
   useEffect(() => {
     if (existingEvents.length > 0) {
@@ -34,7 +40,7 @@ export const TimelineScreen: React.FC<Props> = ({ mission, onNext, existingEvent
     await appendTimelineEvent(event)
     setEvenements((prev) => [...prev, event])
     setNote('')
-    setConstantes({ ta: '', fc: '', spo2: '', fr: '', temperature: '' })
+    setConstantes({ ta: '120/70 mmHg', fc: '80 bpm', spo2: '98 %SpO₂', fr: '16 c/min', temperature: '37.0 °C' })
   }
 
   const handleNext = (): void => {
@@ -57,7 +63,7 @@ export const TimelineScreen: React.FC<Props> = ({ mission, onNext, existingEvent
         ))}
       </View>
       <TextInput placeholder="Note courte" value={note} onChangeText={setNote} style={styles.input} />
-      <Text style={styles.label}>Constantes ponctuelles (optionnel)</Text>
+      <Text style={styles.label}>Constantes ponctuelles (optionnel) — unités : mmHg / bpm / c/min / %SpO₂</Text>
       <View style={styles.constantesRow}>
         <TextInput placeholder="TA" value={constantes.ta} onChangeText={(text) => setConstantes(prev => ({ ...prev, ta: text }))} style={styles.inputSmall} />
         <TextInput placeholder="FC" value={constantes.fc} onChangeText={(text) => setConstantes(prev => ({ ...prev, fc: text }))} style={styles.inputSmall} />
