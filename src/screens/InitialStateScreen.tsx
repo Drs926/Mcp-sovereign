@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native'
+import { View, Text, TextInput, Button, StyleSheet, Pressable } from 'react-native'
 import { saveEtatInitial } from '../storage/localDatabase'
-import { type EtatClinique, type Mission } from '../types/models'
+import { CONSCIENCE_OPTIONS, type ConscienceLevel, type EtatClinique, type Mission } from '../types/models'
 
 interface Props {
   mission: Mission
@@ -21,15 +21,36 @@ export const InitialStateScreen: React.FC<Props> = ({ mission, onNext }) => {
     dispositifs: [],
     horodatage: new Date().toISOString()
   })
+  const [error, setError] = useState<string>('')
 
-  const updateField = (field: keyof EtatClinique, value: string | number): void => {
+  const updateField = (field: keyof EtatClinique, value: string | number | string[]): void => {
     setEtat((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleSave = (): void => {
-    saveEtatInitial(mission.id, etat)
+  const handleSave = async (): Promise<void> => {
+    if ([etat.ta, etat.fc, etat.spo2, etat.fr, etat.temperature].some(value => value.trim() === '')) {
+      setError('Renseignez les constantes vitales de base (TA, FC, SpO₂, FR, Température).')
+      return
+    }
+
+    setError('')
+    await saveEtatInitial(mission.id, etat)
     onNext(etat)
   }
+
+  const renderConscienceOptions = (): JSX.Element => (
+    <View style={styles.optionsRow}>
+      {CONSCIENCE_OPTIONS.map((option: ConscienceLevel) => (
+        <Pressable
+          key={option}
+          onPress={() => updateField('conscience', option)}
+          style={[styles.optionChip, etat.conscience === option && styles.optionChipSelected]}
+        >
+          <Text style={etat.conscience === option ? styles.optionChipSelectedText : styles.optionChipText}>{option}</Text>
+        </Pressable>
+      ))}
+    </View>
+  )
 
   return (
     <View style={styles.container}>
@@ -39,10 +60,12 @@ export const InitialStateScreen: React.FC<Props> = ({ mission, onNext }) => {
       <TextInput placeholder="SpO₂" value={etat.spo2} onChangeText={(text) => updateField('spo2', text)} style={styles.input} />
       <TextInput placeholder="FR" value={etat.fr} onChangeText={(text) => updateField('fr', text)} style={styles.input} />
       <TextInput placeholder="Température" value={etat.temperature} onChangeText={(text) => updateField('temperature', text)} style={styles.input} />
-      <TextInput placeholder="Conscience (AVPU)" value={etat.conscience} onChangeText={(text) => updateField('conscience', text)} style={styles.input} />
+      <Text style={styles.label}>Conscience (AVPU)</Text>
+      {renderConscienceOptions()}
       <TextInput placeholder="Douleur (EVA)" keyboardType="numeric" value={etat.douleurEVA.toString()} onChangeText={(text) => updateField('douleurEVA', Number(text))} style={styles.input} />
       <TextInput placeholder="Traitements (liste courte)" value={etat.traitements.join(', ')} onChangeText={(text) => updateField('traitements', text.split(',').map(s => s.trim()).filter(Boolean))} style={styles.input} />
       <TextInput placeholder="Dispositifs" value={etat.dispositifs.join(', ')} onChangeText={(text) => updateField('dispositifs', text.split(',').map(s => s.trim()).filter(Boolean))} style={styles.input} />
+      {error !== '' && <Text style={styles.error}>{error}</Text>}
       <Button title="Continuer vers suivi" onPress={handleSave} />
     </View>
   )
@@ -59,6 +82,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginVertical: 8
   },
+  label: {
+    fontWeight: '600',
+    marginBottom: 6
+  },
   input: {
     borderWidth: 1,
     borderColor: '#d0d7de',
@@ -66,5 +93,34 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
     backgroundColor: '#fff'
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12
+  },
+  optionChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#fff'
+  },
+  optionChipSelected: {
+    backgroundColor: '#0ea5e9',
+    borderColor: '#0284c7'
+  },
+  optionChipText: {
+    color: '#0f172a'
+  },
+  optionChipSelectedText: {
+    color: '#fff',
+    fontWeight: '600'
+  },
+  error: {
+    color: '#b91c1c',
+    marginBottom: 10
   }
 })

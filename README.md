@@ -20,12 +20,20 @@ npm run start # ou npm run android / npm run ios
 ```
 
 ## Parcours MVP
-1. **Création & cadrage de mission** : identifiant unique, typage mission/accompagnant, données patient minimales.
+1. **Création & cadrage de mission** : identifiant unique, typage mission/accompagnant, données patient minimales (saisies via listes fermées).
 2. **État initial** : constantes vitales, état clinique et traitements/dispositifs via champs courts.
-3. **Timeline** : ajout rapide d’événements (surveillance/acte/incident) sans blocage.
-4. **Fin de mission** : état final, type/heure de remise, signature accompagnant, validation irréversible.
-5. **Rapport PDF** : génération locale structurée en cinq sections prêtes à l’export.
+3. **Timeline** : ajout rapide d’événements (surveillance/acte/incident) sans blocage et constantes ponctuelles.
+4. **Fin de mission** : état final, type/heure de remise, signature accompagnant, comparatif initial/final, validation irréversible avec code de réouverture.
+5. **Rapport PDF** : génération locale structurée en cinq sections prêtes à l’export + comparatif initial/final.
 
 ## Sécurité & données
 - Stockage local uniquement, sans synchronisation réseau.
 - Pas de données nominatives patient, identifiant interne uniquement.
+- Chiffrement AES applicatif des données sensibles (patient, notes timeline) avec clé stockée dans SecureStore, hash pour codes de réouverture.
+
+## Exécution du plan de conformité
+- **Encodage et libellés** : fichiers Markdown et libellés UI en UTF-8 sans caractères corrompus.
+- **Listes fermées et validations** : sélecteurs pour type de mission, diagnostic principal, accompagnant, conscience, type de remise ; validations minimales sur les champs obligatoires.
+- **Persistance chiffrée** : AES applicatif des données patient et notes timeline, clé locale SecureStore ; statut de mission, finalisation irréversible et réouverture par code hashé.
+- **Reprise et flux linéaire** : reprise de la mission la plus récente (état initial, timeline, état final) et navigation Mission → Initial → Timeline → Fin → Rapport.
+- **PDF structuré** : rapport en 5 sections, incidents filtrés par type, comparatif initial/final inclus, champs accentués corrects.
