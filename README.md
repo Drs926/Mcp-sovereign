@@ -37,3 +37,6 @@ npm run start # ou npm run android / npm run ios
 - **Persistance chiffrée** : AES applicatif des données patient et notes timeline, clé locale SecureStore ; statut de mission, finalisation irréversible et réouverture par code hashé.
 - **Reprise et flux linéaire** : reprise de la mission la plus récente (état initial, timeline, état final) et navigation Mission → Initial → Timeline → Fin → Rapport.
 - **PDF structuré** : rapport en 5 sections, incidents filtrés par type, comparatif initial/final inclus, champs accentués corrects.
+
+## Prochaines étapes recommandées
+Consultez [`SUGGESTIONS.md`](./SUGGESTIONS.md) pour une courte liste de pistes d’amélioration (robustesse offline, sécurité renforcée, ergonomie et PDF).
