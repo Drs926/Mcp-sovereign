@@ -10,11 +10,11 @@ interface Props {
 
 export const InitialStateScreen: React.FC<Props> = ({ mission, onNext }) => {
   const [etat, setEtat] = useState<EtatClinique>({
-    ta: '',
-    fc: '',
-    spo2: '',
-    fr: '',
-    temperature: '',
+    ta: '120/70 mmHg',
+    fc: '80 bpm',
+    spo2: '98 %SpO₂',
+    fr: '16 c/min',
+    temperature: '37.0 °C',
     conscience: 'Alerte',
     douleurEVA: 0,
     traitements: [],
@@ -22,17 +22,25 @@ export const InitialStateScreen: React.FC<Props> = ({ mission, onNext }) => {
     horodatage: new Date().toISOString()
   })
   const [error, setError] = useState<string>('')
+  const [missingFields, setMissingFields] = useState<string[]>([])
 
   const updateField = (field: keyof EtatClinique, value: string | number | string[]): void => {
     setEtat((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleSave = async (): Promise<void> => {
+    const missing: string[] = []
     if ([etat.ta, etat.fc, etat.spo2, etat.fr, etat.temperature].some(value => value.trim() === '')) {
-      setError('Renseignez les constantes vitales de base (TA, FC, SpO₂, FR, Température).')
+      missing.push('Constantes vitales (TA, FC, SpO₂, FR, Température)')
+    }
+
+    if (missing.length > 0) {
+      setMissingFields(missing)
+      setError('Complétez les constantes obligatoires avant de poursuivre.')
       return
     }
 
+    setMissingFields([])
     setError('')
     await saveEtatInitial(mission.id, etat)
     onNext(etat)
@@ -54,17 +62,25 @@ export const InitialStateScreen: React.FC<Props> = ({ mission, onNext }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>État initial patient</Text>
-      <TextInput placeholder="TA" value={etat.ta} onChangeText={(text) => updateField('ta', text)} style={styles.input} />
-      <TextInput placeholder="FC" value={etat.fc} onChangeText={(text) => updateField('fc', text)} style={styles.input} />
-      <TextInput placeholder="SpO₂" value={etat.spo2} onChangeText={(text) => updateField('spo2', text)} style={styles.input} />
-      <TextInput placeholder="FR" value={etat.fr} onChangeText={(text) => updateField('fr', text)} style={styles.input} />
-      <TextInput placeholder="Température" value={etat.temperature} onChangeText={(text) => updateField('temperature', text)} style={styles.input} />
+      <Text style={styles.title}>État initial patient (champs obligatoires *)</Text>
+      <TextInput placeholder="TA (mmHg)*" value={etat.ta} onChangeText={(text) => updateField('ta', text)} style={styles.input} />
+      <TextInput placeholder="FC (bpm)*" value={etat.fc} onChangeText={(text) => updateField('fc', text)} style={styles.input} />
+      <TextInput placeholder="SpO₂ (%)*" value={etat.spo2} onChangeText={(text) => updateField('spo2', text)} style={styles.input} />
+      <TextInput placeholder="FR (c/min)*" value={etat.fr} onChangeText={(text) => updateField('fr', text)} style={styles.input} />
+      <TextInput placeholder="Température (°C)*" value={etat.temperature} onChangeText={(text) => updateField('temperature', text)} style={styles.input} />
       <Text style={styles.label}>Conscience (AVPU)</Text>
       {renderConscienceOptions()}
       <TextInput placeholder="Douleur (EVA)" keyboardType="numeric" value={etat.douleurEVA.toString()} onChangeText={(text) => updateField('douleurEVA', Number(text))} style={styles.input} />
       <TextInput placeholder="Traitements (liste courte)" value={etat.traitements.join(', ')} onChangeText={(text) => updateField('traitements', text.split(',').map(s => s.trim()).filter(Boolean))} style={styles.input} />
       <TextInput placeholder="Dispositifs" value={etat.dispositifs.join(', ')} onChangeText={(text) => updateField('dispositifs', text.split(',').map(s => s.trim()).filter(Boolean))} style={styles.input} />
+      {missingFields.length > 0 && (
+        <View style={styles.validationBox}>
+          <Text style={styles.validationTitle}>À renseigner :</Text>
+          {missingFields.map(item => (
+            <Text key={item} style={styles.validationItem}>• {item}</Text>
+          ))}
+        </View>
+      )}
       {error !== '' && <Text style={styles.error}>{error}</Text>}
       <Button title="Continuer vers suivi" onPress={handleSave} />
     </View>
@@ -122,5 +138,21 @@ const styles = StyleSheet.create({
   error: {
     color: '#b91c1c',
     marginBottom: 10
+  },
+  validationBox: {
+    borderWidth: 1,
+    borderColor: '#f97316',
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#fff7ed',
+    marginBottom: 12
+  },
+  validationTitle: {
+    color: '#c2410c',
+    fontWeight: '700',
+    marginBottom: 4
+  },
+  validationItem: {
+    color: '#7c2d12'
   }
 })

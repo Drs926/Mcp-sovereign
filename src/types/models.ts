@@ -26,6 +26,7 @@ export interface Mission {
   finalizedAt?: string | null
   reopenedAt?: string | null
   reopenCodeHash?: string | null
+  reopenAttemptsRemaining?: number | null
 }
 
 export interface Patient {

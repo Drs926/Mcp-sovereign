@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system/build/legacy'
 import { PDFDocument, PageSizes } from 'react-native-pdf-lib'
+import CryptoJS from 'crypto-js'
 import { type EtatClinique, type EvenementTimeline, type Mission, type EtatFinal } from '../types/models'
 
 interface ReportData {
@@ -33,9 +34,15 @@ const formatComparatif = (initial: EtatClinique, final: EtatClinique): string[] 
   `Douleur EVA: ${initial.douleurEVA} → ${final.douleurEVA}`
 ]
 
-export const generateMissionReport = async (data: ReportData): Promise<string> => {
+export interface GeneratedReport {
+  path: string
+  checksum: string
+}
+
+export const generateMissionReport = async (data: ReportData): Promise<GeneratedReport> => {
   const { mission, etatInitial, timeline, etatFinal } = data
   const date = new Date().toISOString()
+  const finalizedAt = mission.finalizedAt ?? date
 
   const summaryLines = [
     line('Mission', mission.id),
@@ -78,6 +85,11 @@ export const generateMissionReport = async (data: ReportData): Promise<string> =
   const marginLeft = 20
   let yOffset = 780
 
+  const drawHeader = (): void => {
+    page.drawText(`Mission ${mission.id} — Finalisée le ${finalizedAt}`, { x: marginLeft, y: yOffset, fontSize: 12 })
+    yOffset -= 16
+  }
+
   const drawTitle = (title: string): void => {
     page.drawText(title, { x: marginLeft, y: yOffset, color: '#0B4F6C', fontSize: 16 })
     yOffset -= 20
@@ -90,6 +102,17 @@ export const generateMissionReport = async (data: ReportData): Promise<string> =
     })
     yOffset -= 12
   }
+
+  drawHeader()
+  drawTitle('Sommaire rapide')
+  drawList([
+    '1. Informations mission',
+    '2. État initial',
+    '3. Chronologie',
+    '4. Incidents',
+    '5. État final + signature',
+    'Comparatif initial/final'
+  ])
 
   drawTitle('1. Informations mission')
   drawList(summaryLines)
@@ -116,10 +139,13 @@ export const generateMissionReport = async (data: ReportData): Promise<string> =
   drawList(comparatifLines)
 
   page.drawText(`PDF généré le ${date}`, { x: marginLeft, y: yOffset, fontSize: 10 })
+  yOffset -= 14
+  page.drawText('Page 1', { x: marginLeft, y: yOffset, fontSize: 10 })
 
   const pdfBytes = await doc.write()
-  const filename = `${FileSystem.documentDirectory ?? FileSystem.cacheDirectory}mission_${mission.id}.pdf`
+  const checksum = CryptoJS.SHA256(pdfBytes).toString()
+  const filename = `${FileSystem.documentDirectory ?? FileSystem.cacheDirectory}mission_${mission.id}_${finalizedAt}.pdf`
   await FileSystem.writeAsStringAsync(filename, pdfBytes, { encoding: FileSystem.EncodingType.Base64 })
 
-  return filename
+  return { path: filename, checksum }
 }

@@ -38,6 +38,7 @@ export const MissionCreationScreen: React.FC<Props> = ({ onNext }) => {
     status: 'draft'
   })
   const [error, setError] = useState<string>('')
+  const [missingFields, setMissingFields] = useState<string[]>([])
 
   useEffect(() => {
     initializeSchema()
@@ -55,16 +56,19 @@ export const MissionCreationScreen: React.FC<Props> = ({ onNext }) => {
   }
 
   const handleContinue = async (): Promise<void> => {
-    if (mission.depart.trim() === '' || mission.arrivee.trim() === '') {
-      setError('Les lieux de départ et d’arrivée sont obligatoires.')
+    const missing: string[] = []
+    if (mission.depart.trim() === '') missing.push('Lieu de départ')
+    if (mission.arrivee.trim() === '') missing.push('Lieu d’arrivée')
+    if (mission.patient.identifiant.trim() === '') missing.push('Identifiant patient')
+    if (mission.patient.age <= 0) missing.push('Âge patient (>0)')
+
+    if (missing.length > 0) {
+      setMissingFields(missing)
+      setError('Complétez les champs obligatoires avant de démarrer la mission.')
       return
     }
 
-    if (mission.patient.identifiant.trim() === '' || mission.patient.age <= 0) {
-      setError('Renseignez un identifiant patient et un âge valide.')
-      return
-    }
-
+    setMissingFields([])
     setError('')
     await saveMission(mission)
     onNext(mission)
@@ -86,23 +90,31 @@ export const MissionCreationScreen: React.FC<Props> = ({ onNext }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Mission</Text>
+      <Text style={styles.title}>Mission (champs obligatoires *)</Text>
       <Text style={styles.label}>Type de mission</Text>
       {renderOptions<MissionType>(MISSION_TYPES, mission.type, (value) => updateField('type', value))}
       <TextInput placeholder="Date/heure" value={mission.date} onChangeText={(text) => updateField('date', text)} style={styles.input} />
-      <TextInput placeholder="Lieu départ" value={mission.depart} onChangeText={(text) => updateField('depart', text)} style={styles.input} />
-      <TextInput placeholder="Lieu arrivée" value={mission.arrivee} onChangeText={(text) => updateField('arrivee', text)} style={styles.input} />
+      <TextInput placeholder="Lieu départ*" value={mission.depart} onChangeText={(text) => updateField('depart', text)} style={styles.input} />
+      <TextInput placeholder="Lieu arrivée*" value={mission.arrivee} onChangeText={(text) => updateField('arrivee', text)} style={styles.input} />
       <Text style={styles.label}>Accompagnant</Text>
       {renderOptions<AccompagnantType>(ACCOMPAGNANT_TYPES, mission.accompagnant, (value) => updateField('accompagnant', value))}
 
       <Text style={styles.title}>Patient</Text>
-      <TextInput placeholder="Identifiant interne / initiales" value={mission.patient.identifiant} onChangeText={(text) => updatePatient('identifiant', text)} style={styles.input} />
-      <TextInput placeholder="Âge" keyboardType="numeric" value={mission.patient.age.toString()} onChangeText={(text) => updatePatient('age', Number(text))} style={styles.input} />
+      <TextInput placeholder="Identifiant interne / initiales*" value={mission.patient.identifiant} onChangeText={(text) => updatePatient('identifiant', text)} style={styles.input} />
+      <TextInput placeholder="Âge*" keyboardType="numeric" value={mission.patient.age.toString()} onChangeText={(text) => updatePatient('age', Number(text))} style={styles.input} />
       <Text style={styles.label}>Sexe</Text>
       {renderOptions<'H' | 'F'>(['H', 'F'], mission.patient.sexe, (value) => updatePatient('sexe', value))}
       <Text style={styles.label}>Diagnostic principal</Text>
       {renderOptions<DiagnosticPrincipal>(DIAGNOSTIC_OPTIONS, mission.patient.diagnostic, (value) => updatePatient('diagnostic', value))}
 
+      {missingFields.length > 0 && (
+        <View style={styles.validationBox}>
+          <Text style={styles.validationTitle}>À renseigner :</Text>
+          {missingFields.map(item => (
+            <Text key={item} style={styles.validationItem}>• {item}</Text>
+          ))}
+        </View>
+      )}
       {error !== '' && <Text style={styles.error}>{error}</Text>}
       <Button title="Enregistrer & continuer" onPress={handleContinue} />
     </View>
@@ -160,5 +172,21 @@ const styles = StyleSheet.create({
   error: {
     color: '#b91c1c',
     marginBottom: 10
+  },
+  validationBox: {
+    borderWidth: 1,
+    borderColor: '#f97316',
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#fff7ed',
+    marginBottom: 12
+  },
+  validationTitle: {
+    color: '#c2410c',
+    fontWeight: '700',
+    marginBottom: 4
+  },
+  validationItem: {
+    color: '#7c2d12'
   }
 })
