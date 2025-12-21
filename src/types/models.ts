@@ -1,6 +1,17 @@
-export type MissionType = 'sanitaire' | 'répatriement' | 'néonatal' | 'autre'
+export type MissionType = 'sanitaire' | 'rapatriement' | 'néonatal' | 'autre'
+export type MissionStatus = 'draft' | 'finalized'
 export type AccompagnantType = 'MD' | 'IDE'
 export type DiagnosticPrincipal = 'traumatique' | 'cardiaque' | 'respiratoire' | 'neurologique' | 'autre'
+export type ConscienceLevel = 'Alerte' | 'Verbal' | 'Pain' | 'Unresponsive'
+export type EvenementType = 'surveillance' | 'acte_medical' | 'incident'
+export type TypeRemise = 'établissement' | 'ambulance' | 'tiers'
+
+export const MISSION_TYPES: MissionType[] = ['sanitaire', 'rapatriement', 'néonatal', 'autre']
+export const ACCOMPAGNANT_TYPES: AccompagnantType[] = ['MD', 'IDE']
+export const DIAGNOSTIC_OPTIONS: DiagnosticPrincipal[] = ['traumatique', 'cardiaque', 'respiratoire', 'neurologique', 'autre']
+export const CONSCIENCE_OPTIONS: ConscienceLevel[] = ['Alerte', 'Verbal', 'Pain', 'Unresponsive']
+export const EVENEMENT_TYPES: EvenementType[] = ['surveillance', 'acte_medical', 'incident']
+export const TYPE_REMISE_OPTIONS: TypeRemise[] = ['établissement', 'ambulance', 'tiers']
 
 export interface Mission {
   id: string
@@ -11,6 +22,11 @@ export interface Mission {
   accompagnant: AccompagnantType
   patient: Patient
   createdAt: string
+  status: MissionStatus
+  finalizedAt?: string | null
+  reopenedAt?: string | null
+  reopenCodeHash?: string | null
+  reopenAttemptsRemaining?: number | null
 }
 
 export interface Patient {
@@ -26,14 +42,12 @@ export interface EtatClinique {
   spo2: string
   fr: string
   temperature: string
-  conscience: 'Alerte' | 'Verbal' | 'Pain' | 'Unresponsive'
+  conscience: ConscienceLevel
   douleurEVA: number
   traitements: string[]
   dispositifs: string[]
   horodatage: string
 }
-
-export type EvenementType = 'surveillance' | 'acte_medical' | 'incident'
 
 export interface EvenementTimeline {
   id: string
@@ -47,7 +61,7 @@ export interface EvenementTimeline {
 export interface EtatFinal {
   missionId: string
   etatPatient: EtatClinique
-  typeRemise: 'établissement' | 'ambulance' | 'tiers'
+  typeRemise: TypeRemise
   heureRemise: string
   signatureAccompagnant: string
 }

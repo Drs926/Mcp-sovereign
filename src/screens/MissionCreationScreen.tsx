@@ -1,8 +1,16 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native'
+import { View, Text, TextInput, Button, StyleSheet, Pressable } from 'react-native'
 import { v4 as uuidv4 } from 'uuid'
 import { saveMission, initializeSchema } from '../storage/localDatabase'
-import { type Mission, type MissionType, type DiagnosticPrincipal, type AccompagnantType } from '../types/models'
+import {
+  ACCOMPAGNANT_TYPES,
+  DIAGNOSTIC_OPTIONS,
+  MISSION_TYPES,
+  type Mission,
+  type MissionType,
+  type DiagnosticPrincipal,
+  type AccompagnantType
+} from '../types/models'
 
 interface Props {
   onNext: (mission: Mission) => void
@@ -26,8 +34,11 @@ export const MissionCreationScreen: React.FC<Props> = ({ onNext }) => {
       sexe: 'H',
       diagnostic: defaultDiagnostic
     },
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    status: 'draft'
   })
+  const [error, setError] = useState<string>('')
+  const [missingFields, setMissingFields] = useState<string[]>([])
 
   useEffect(() => {
     initializeSchema()
@@ -44,26 +55,67 @@ export const MissionCreationScreen: React.FC<Props> = ({ onNext }) => {
     }))
   }
 
-  const handleContinue = (): void => {
-    saveMission(mission)
+  const handleContinue = async (): Promise<void> => {
+    const missing: string[] = []
+    if (mission.depart.trim() === '') missing.push('Lieu de départ')
+    if (mission.arrivee.trim() === '') missing.push('Lieu d’arrivée')
+    if (mission.patient.identifiant.trim() === '') missing.push('Identifiant patient')
+    if (mission.patient.age <= 0) missing.push('Âge patient (>0)')
+
+    if (missing.length > 0) {
+      setMissingFields(missing)
+      setError('Complétez les champs obligatoires avant de démarrer la mission.')
+      return
+    }
+
+    setMissingFields([])
+    setError('')
+    await saveMission(mission)
     onNext(mission)
   }
 
+  const renderOptions = <T extends string>(options: T[], selected: T, onSelect: (value: T) => void): JSX.Element => (
+    <View style={styles.optionsRow}>
+      {options.map(option => (
+        <Pressable
+          key={option}
+          onPress={() => onSelect(option)}
+          style={[styles.optionChip, selected === option && styles.optionChipSelected]}
+        >
+          <Text style={selected === option ? styles.optionChipSelectedText : styles.optionChipText}>{option}</Text>
+        </Pressable>
+      ))}
+    </View>
+  )
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Mission</Text>
-      <TextInput placeholder="Type (liste fermée)" value={mission.type} onChangeText={(text) => updateField('type', text)} style={styles.input} />
+      <Text style={styles.title}>Mission (champs obligatoires *)</Text>
+      <Text style={styles.label}>Type de mission</Text>
+      {renderOptions<MissionType>(MISSION_TYPES, mission.type, (value) => updateField('type', value))}
       <TextInput placeholder="Date/heure" value={mission.date} onChangeText={(text) => updateField('date', text)} style={styles.input} />
-      <TextInput placeholder="Lieu départ" value={mission.depart} onChangeText={(text) => updateField('depart', text)} style={styles.input} />
-      <TextInput placeholder="Lieu arrivée" value={mission.arrivee} onChangeText={(text) => updateField('arrivee', text)} style={styles.input} />
-      <TextInput placeholder="Type accompagnant (MD/IDE)" value={mission.accompagnant} onChangeText={(text) => updateField('accompagnant', text)} style={styles.input} />
+      <TextInput placeholder="Lieu départ*" value={mission.depart} onChangeText={(text) => updateField('depart', text)} style={styles.input} />
+      <TextInput placeholder="Lieu arrivée*" value={mission.arrivee} onChangeText={(text) => updateField('arrivee', text)} style={styles.input} />
+      <Text style={styles.label}>Accompagnant</Text>
+      {renderOptions<AccompagnantType>(ACCOMPAGNANT_TYPES, mission.accompagnant, (value) => updateField('accompagnant', value))}
 
       <Text style={styles.title}>Patient</Text>
-      <TextInput placeholder="Identifiant interne / initiales" value={mission.patient.identifiant} onChangeText={(text) => updatePatient('identifiant', text)} style={styles.input} />
-      <TextInput placeholder="Âge" keyboardType="numeric" value={mission.patient.age.toString()} onChangeText={(text) => updatePatient('age', Number(text))} style={styles.input} />
-      <TextInput placeholder="Sexe (H/F)" value={mission.patient.sexe} onChangeText={(text) => updatePatient('sexe', text)} style={styles.input} />
-      <TextInput placeholder="Diagnostic principal" value={mission.patient.diagnostic} onChangeText={(text) => updatePatient('diagnostic', text)} style={styles.input} />
+      <TextInput placeholder="Identifiant interne / initiales*" value={mission.patient.identifiant} onChangeText={(text) => updatePatient('identifiant', text)} style={styles.input} />
+      <TextInput placeholder="Âge*" keyboardType="numeric" value={mission.patient.age.toString()} onChangeText={(text) => updatePatient('age', Number(text))} style={styles.input} />
+      <Text style={styles.label}>Sexe</Text>
+      {renderOptions<'H' | 'F'>(['H', 'F'], mission.patient.sexe, (value) => updatePatient('sexe', value))}
+      <Text style={styles.label}>Diagnostic principal</Text>
+      {renderOptions<DiagnosticPrincipal>(DIAGNOSTIC_OPTIONS, mission.patient.diagnostic, (value) => updatePatient('diagnostic', value))}
 
+      {missingFields.length > 0 && (
+        <View style={styles.validationBox}>
+          <Text style={styles.validationTitle}>À renseigner :</Text>
+          {missingFields.map(item => (
+            <Text key={item} style={styles.validationItem}>• {item}</Text>
+          ))}
+        </View>
+      )}
+      {error !== '' && <Text style={styles.error}>{error}</Text>}
       <Button title="Enregistrer & continuer" onPress={handleContinue} />
     </View>
   )
@@ -80,6 +132,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginVertical: 8
   },
+  label: {
+    fontWeight: '600',
+    marginBottom: 6
+  },
   input: {
     borderWidth: 1,
     borderColor: '#d0d7de',
@@ -87,5 +143,50 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
     backgroundColor: '#fff'
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12
+  },
+  optionChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#fff'
+  },
+  optionChipSelected: {
+    backgroundColor: '#0ea5e9',
+    borderColor: '#0284c7'
+  },
+  optionChipText: {
+    color: '#0f172a'
+  },
+  optionChipSelectedText: {
+    color: '#fff',
+    fontWeight: '600'
+  },
+  error: {
+    color: '#b91c1c',
+    marginBottom: 10
+  },
+  validationBox: {
+    borderWidth: 1,
+    borderColor: '#f97316',
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#fff7ed',
+    marginBottom: 12
+  },
+  validationTitle: {
+    color: '#c2410c',
+    fontWeight: '700',
+    marginBottom: 4
+  },
+  validationItem: {
+    color: '#7c2d12'
   }
 })
