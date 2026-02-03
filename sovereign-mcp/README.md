@@ -1,30 +1,75 @@
 # sovereign-mcp
 
-Minimal MCP orchestrator with Fastify, JSON-RPC 2.0, optional SSE streaming, downstream MCP client, and audited token auth.
+Local MCP gateway providing an inbound MCP server, a read-only UI API, and MCP client access to downstream servers.
 
-## Quickstart
-1. Copy `.env.example` to `.env` and set tokens.
-2. Install and build:
-   - `npm install`
-   - `npm run build`
-3. Start: `npm run start`
+## Installation
 
-## Endpoints
-- `GET /health` -> `{ ok: true }`
-- `POST /mcp` -> JSON-RPC 2.0
+```bash
+cd sovereign-mcp
+npm install
+```
 
-### Streaming SSE
-Add `Accept: text/event-stream` or `?stream=1` to receive SSE events. The server sends a `result` event and then `done`.
+## Configuration
 
-## Auth
-- `Authorization: Bearer <token>` or `x-mcp-token: <token>`
-- Read tokens are allowed for read-only calls.
-- Write tokens are required when the request is marked `params.write: true`.
+Copy the sample env file and edit values:
 
-## Logs
-- `state/AUDIT_LOG.ndjson` for audit trail
-- `state/EVENT_LOG.ndjson` for event trail
+```bash
+cp .env.example .env
+```
 
-## Notes
-- No direct `zod` dependency or usage.
-- Atomic writes use temp files + rename with an in-process mutex.
+Required variables:
+
+- `SOVEREIGN_PORT`
+- `SOVEREIGN_TOKEN_READ`
+- `SOVEREIGN_TOKEN_WRITE`
+- `DOWNSTREAM_STITCH_BASE_URL`
+- `DOWNSTREAM_STITCH_TOKEN`
+- `DOWNSTREAM_STITCH_TRANSPORT` (`http` or `sse`)
+- `DOWNSTREAM_MEMORY_BASE_URL`
+- `DOWNSTREAM_MEMORY_TOKEN`
+- `DOWNSTREAM_MEMORY_TRANSPORT` (`http` or `sse`)
+- `ALLOWLIST_MODE`
+
+## Run local
+
+```bash
+npm run dev
+```
+
+For production build:
+
+```bash
+npm run build
+npm start
+```
+
+## UI API (read-only)
+
+Example call to fetch the canonical state:
+
+```bash
+curl -H "Authorization: Bearer $SOVEREIGN_TOKEN_READ" \
+  http://localhost:8787/ui/state
+```
+
+## MCP inbound example
+
+```bash
+curl -H "Authorization: Bearer $SOVEREIGN_TOKEN_READ" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":"demo","method":"list_tools"}' \
+  http://localhost:8787/mcp
+```
+
+Calling a tool:
+
+```bash
+curl -H "Authorization: Bearer $SOVEREIGN_TOKEN_WRITE" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":"demo","method":"call_tool","params":{"name":"project.get_state"}}' \
+  http://localhost:8787/mcp
+```
+
+## Downstream MCP clients
+
+Downstream connections are handled via MCP HTTP requests. If your downstream uses SSE, set the transport env var to `sse` and ensure the base URL points at the MCP endpoint. The MCP client implementation in `src/downstream/mcpClient.ts` can be adapted if your downstream expects a different endpoint path.
